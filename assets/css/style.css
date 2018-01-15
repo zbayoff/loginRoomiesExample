@@ -1,0 +1,12 @@
+.form-wrapper {
+    
+    width: 300px;
+    border: 2px solid black;
+    padding: 1rem;
+}
+
+.group-wrapper {
+    justify-content: center;
+    display: flex;
+    flex-direction: row;
+}
