@@ -108,16 +108,17 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
     } // else (input password not empty)
     
     // Check input errors before inserting in database
-    if(empty($username_err) && empty($password_err)) {
+    if(empty($firstname_err) && empty($lastname_err)  && empty($email_err) && empty($password_err)) {
         
         // Prepare an INSERT statement
         
-        $sql = "INSERT INTO users (fName, lName, email, user_password) VALUES
+        $sql = "INSERT INTO users (fName, lName, email, password) VALUES
         (?, ?, ?, ?)";
         
         if ($stmt = mysqli_prepare($link, $sql)) {
             //Bind variables to the prepared statement as parameters
-            mysqli_stmt_bind_param($stmt, "ssss", $param_firstname, $param_lastname, $param_email, $param_password);
+            
+            mysqli_stmt_bind_param($stmt, 'ssss', $param_firstname, $param_lastname, $param_email, $param_password);
             
             // Set parameters
             $param_firstname = $firstname;
@@ -127,14 +128,17 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
             // Creates password hash
             
             // Attempt to execute prepared statement
-            
-            if (mysqli_stmt_execute($stmt)) {
-                // Redirect to login page
+            if(mysqli_stmt_execute($stmt)) {
+                //Store result
                 
-                echo 'User account has been created.';
+                session_start();
+                $_SESSION['first-name'] = $firstname;
+                $_SESSION['last-name'] = $lastname;
+                $_SESSION['email'] = $email;
+                header("location: groups.php");
                 
             } else {
-                echo "Something went wrong. Please try again later.";
+                echo "Oops! Something went wrong. Please try again later.";
             }
             
         }
@@ -182,11 +186,11 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
             </div>
             <div class="form-group">
                 <label for="email">Email<sup>*</sup></label>
-                <input type="email" class="form-control" name="email" ><span class="help-block"><?php echo $email_err; ?></span>
+                <input type="email" class="form-control" name="email"><span class="help-block"><?php echo $email_err; ?></span>
             </div>
             <div class="form-group">
                 <label for="password">Password<sup>*</sup></label>
-                <input type="password" class="form-control" name="password" ><span class="help-block"><?php echo $password_err; ?></span>
+                <input type="password" class="form-control" name="password"><span class="help-block"><?php echo $password_err; ?></span>
             </div>
             <div class="form-group">
                 <input type="submit" class="btn btn-primary" value="Create Account">
