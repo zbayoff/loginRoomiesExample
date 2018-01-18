@@ -14,8 +14,10 @@ if (!isset($_SESSION['email']) || empty($_SESSION['email'])) {
 require_once 'config.php';
 
 // Define variables and initialize
-$groupname = $grouppassword = "";
+$groupname = $grouppassword = $groupID = "";
 $groupname_err = $grouppassword_err = $groupnamejoin_err = $grouppasswordjoin_err = $groupnametojoin = $grouppasswordtojoin = "";
+
+$usergrouptaken_err = "";
 
 
 // Processing form data when form Create Group is submitted
@@ -117,6 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
             
         case 'join-group':
             // Validate and execute statements
+            
              // Check if group-name-join is empty
             if (empty(trim($_POST['group-name-join']))) {
                 $groupnamejoin_err = "Please enter the group name you want to join.";
@@ -137,7 +140,8 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
             // if they belong, error message they are already joined to the group
             // if they don't belong, insert their user_id to their inputted group in user2group
 
-            if (empty($groupnamejoin_err_err) && empty($grouppasswordjoin_err_err)) {
+            if (empty($groupnamejoin_err) && empty($grouppasswordjoin_err)) {
+                
                 
                 // Query groups TABLE to grab group_id from inputted group_name.
                 $sql = "SELECT group_name, group_password FROM groups WHERE group_name = ?";
@@ -164,9 +168,58 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
                             
                             if(mysqli_stmt_fetch($stmt)) {
                                 if(password_verify($grouppasswordtojoin, $hashed_grouppassword)) {
-                                    // password is correct, so user should be added to new group in user2group
-                                    $_SESSION['group_name'] = $groupnametojoin;
-                                    header("location: index.php");
+                                    // password is correct, now check if user has already joined the group
+                                     // query user2group to see if user has joined user2group
+                                    
+                                    $userID = $_SESSION['user_id'];
+                                    
+                                    $sql = "SELECT group_id FROM groups WHERE group_name = '$groupnametojoin'";
+                                    $result = mysqli_query($link, $sql);
+                                    $row = $result->num_rows;
+
+                                    if ($row == 1) {
+                                        $a = mysqli_fetch_assoc($result);
+                                        $groupID = $a["group_id"];
+                                    }
+                                    
+                                    echo "User ID is: " . $userID;
+                                    echo '<br>';
+                                    echo "Group ID is: " . $groupID;
+                                    
+                                    $sql = "SELECT user_id, group_id FROM user2group WHERE user_id = '$userID' AND group_id = '$groupID'";
+                                    $result = mysqli_query($link, $sql);
+                                    $row = $result->num_rows;
+                    
+                                    // if row is found in user2group with both users id and group id
+                                    if ($row == 1) {
+                                        $usergrouptaken_err = "User has already joined this group";
+                                    } else {
+                                        // Add user and group to user2groups
+                                        $_SESSION['group_name'] = $groupnametojoin;
+
+
+                                        $sql = "SELECT group_id FROM groups WHERE group_name = '$groupnametojoin'";
+                                        $result = mysqli_query($link, $sql);
+                                        $row = $result->num_rows;
+
+                                        if ($row == 1) {
+                                            $a = mysqli_fetch_assoc($result);
+                                            $groupID= $a["group_id"];
+                                        }
+
+                                        // Create query to insert user_id from users and group_id from groups into user2group
+                                        $sql = "INSERT INTO user2group (user_id, group_id) VALUES ('$userID', '$groupID')";
+                                        $result = mysqli_query($link, $sql);
+
+                                        if ($result) {
+                                            $_SESSION['user_id'] = $userID;
+                                            $_SESSION['group_id'] = $groupID;
+                                        }
+
+                                        mysqli_close($link);
+
+                                        //header("location: index.php");
+                                    }
                                 } else {
                                     $grouppasswordjoin_err = 'The group password you entered was not valid.';
                                 }
@@ -182,35 +235,12 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
 
                 } // prepare if statement
                 
-                
                 // close stmt
                 mysqli_stmt_close($stmt);
-                
-                // Create variable from SESSION for logged in usersID
-                $userID = $_SESSION['user_id'];
-                
-                $sql = "SELECT group_id FROM groups WHERE group_name = '$groupnametojoin'";
-                $result = mysqli_query($link, $sql);
-                $row = $result->num_rows;
-                
-                if ($row == 1) {
-                    $a = mysqli_fetch_assoc($result);
-                    $groupID= $a["group_id"];
-                }
-                
-                // Create query to insert user_id from users and group_id from groups into user2group
-                $sql = "INSERT INTO user2group (user_id, group_id) VALUES ('$userID', '$groupID')";
-                $result = mysqli_query($link, $sql);
-                
-                if ($result) {
-                    $_SESSION['user_id'] = $userID;
-                    $_SESSION['group_id'] = $groupID;
-                }
-                
-            
+                            
             } //check if error variables are empty
             
-            mysqli_close($link);
+            
             
             break;
             
@@ -269,7 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
                 </div>
                 <div class="form-group">
                     <label for="group-password">Group Password<sup>*</sup></label>
-                    <input type="password" class="form-control" name="group-password-join" required><span class="help-block"><?php echo $grouppasswordjoin_err; ?></span>
+                    <input type="password" class="form-control" name="group-password-join" required><span class="help-block"><?php echo $grouppasswordjoin_err; echo $usergrouptaken_err; ?></span>
                 </div>
                 <div class="form-group">
                     <input type="submit" class="btn btn-primary" value="Join Group">
