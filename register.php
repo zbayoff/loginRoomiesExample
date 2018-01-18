@@ -5,7 +5,7 @@ require_once 'config.php';
 
 // Define variables and initialize
 
-$username = $password = $confirm_password = $firstname = $lastname = $email = "";
+$password=  $firstname = $lastname = $email = "";
 $firstname_err = $lastname_err = $email_err = $password_err = $confirm_password_err = "";
 
 // Processing form data when form is submitted
@@ -111,11 +111,11 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
     if(empty($firstname_err) && empty($lastname_err)  && empty($email_err) && empty($password_err)) {
         
         // Prepare an INSERT statement
-        
-        $sql = "INSERT INTO users (fName, lName, email, password) VALUES
+        $sql = "INSERT INTO users (fName, lName, email, user_password) VALUES
         (?, ?, ?, ?)";
         
         if ($stmt = mysqli_prepare($link, $sql)) {
+
             //Bind variables to the prepared statement as parameters
             
             mysqli_stmt_bind_param($stmt, 'ssss', $param_firstname, $param_lastname, $param_email, $param_password);
@@ -143,6 +143,8 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
                 echo "Oops! Something went wrong. Please try again later.";
             }
             
+        } else {
+            echo 'statement did not prepare';
         }
         
         // Close statement

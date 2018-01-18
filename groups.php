@@ -182,9 +182,6 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
                                         $groupID = $a["group_id"];
                                     }
                                     
-                                    echo "User ID is: " . $userID;
-                                    echo '<br>';
-                                    echo "Group ID is: " . $groupID;
                                     
                                     $sql = "SELECT user_id, group_id FROM user2group WHERE user_id = '$userID' AND group_id = '$groupID'";
                                     $result = mysqli_query($link, $sql);
@@ -218,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
 
                                         mysqli_close($link);
 
-                                        //header("location: index.php");
+                                        header("location: index.php");
                                     }
                                 } else {
                                     $grouppasswordjoin_err = 'The group password you entered was not valid.';
@@ -270,6 +267,11 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
 
 <body>
     <h1>Hi, <strong><?php echo $_SESSION['first_name']; ?></strong></h1>
+    
+    <div>
+        <a href="logout.php">Log Out</a>
+    </div>
+
     <div class="group-wrapper">
         <div id="create-group-wrapper" class="form-wrapper">
             <form method="post" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>">
