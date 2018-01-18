@@ -130,10 +130,12 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
             // Attempt to execute prepared statement
             if(mysqli_stmt_execute($stmt)) {
                 //Store result
-                
+                $userID = mysqli_insert_id($link);
+        
                 session_start();
-                $_SESSION['first-name'] = $firstname;
-                $_SESSION['last-name'] = $lastname;
+                $_SESSION['user_id'] = $userID;
+                $_SESSION['first_name'] = $firstname;
+                $_SESSION['last_name'] = $lastname;
                 $_SESSION['email'] = $email;
                 header("location: groups.php");
                 
