@@ -72,6 +72,9 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
     if (empty(trim($_POST['email']))) {
         $email_err = "Please enter your email.";
     } else {
+        
+        
+        
         // Prepare select statement
         $sql = "SELECT user_id FROM users WHERE email = ?";
         
@@ -84,9 +87,15 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
             
             // Attempt to execute prepared statement
             if(mysqli_stmt_execute($stmt)) {
+                
                 //Store result
                 mysqli_stmt_store_result($stmt);
-                $email = trim($_POST['email']);
+                if(mysqli_stmt_num_rows($stmt) == 1){
+                    $email_err = "This email is already taken.";
+                } else{
+                    $email = trim($_POST['email']);
+                }
+  
             } else {
                 echo "Oops! Something went wrong. Please try again later.";
             }
@@ -109,6 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
     
     // Check input errors before inserting in database
     if(empty($firstname_err) && empty($lastname_err)  && empty($email_err) && empty($password_err)) {
+        
         
         // Prepare an INSERT statement
         $sql = "INSERT INTO users (fName, lName, email, user_password) VALUES

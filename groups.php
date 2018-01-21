@@ -8,16 +8,73 @@ if (!isset($_SESSION['email']) || empty($_SESSION['email'])) {
     header("location: register.php");
 }
 
-
-
 // require config file
 require_once 'config.php';
 
 // Define variables and initialize
 $groupname = $grouppassword = $groupID = "";
 $groupname_err = $grouppassword_err = $groupnamejoin_err = $grouppasswordjoin_err = $groupnametojoin = $grouppasswordtojoin = "";
-
 $usergrouptaken_err = "";
+$groupnamelaunch_err = "";
+
+$currentgroupnamemsg = "";
+$joinedgroupsmsg = "";
+$groupArray = [];
+
+$userID = $_SESSION['user_id'];
+
+
+// check if user is logged in to a group, if yes, display the group
+if (isset($_SESSION['group_name'])){
+    
+    $groupname = $_SESSION['group_name'];
+    $currentgroupnamemsg = "You are currently logged into: <br> " . $groupname;
+    
+    
+    // Check if user belongs to other groups in user2group, if yes, store all in array variable.
+    // query user2group
+    
+    $sql = "SELECT group_name FROM user2group
+            JOIN users on users.user_id = user2group.user_id
+            JOIN groups on groups.group_id = user2group.group_id 
+            WHERE users.user_id = '$userID'";
+    
+    
+    if($result = mysqli_query($link, $sql)){
+        while ($row = $result->fetch_assoc()) {
+            $groupArray[] = $row['group_name'];
+        }
+            
+        
+        $joinedgroupsmsg = "You have joined the following groups: <br>";
+        
+    } else {
+        echo 'Something wrong happened.';
+    }
+    
+    // Output display variable under Launch group section.
+    
+    
+    
+} else {
+    
+    $sql = "SELECT group_name FROM user2group
+            JOIN users on users.user_id = user2group.user_id
+            JOIN groups on groups.group_id = user2group.group_id 
+            WHERE users.user_id = '$userID'";
+    
+    if($result = mysqli_query($link, $sql)){
+        while ($row = $result->fetch_assoc()) {
+            $groupArray[] = $row['group_name'];
+        }
+        if (empty($groupArray)) {
+            $joinedgroupsmsg = "You have not joined any groups.";
+        } else {
+            $joinedgroupsmsg = "You have joined the following groups: <br>";
+        }
+    }
+    $currentgroupnamemsg = 'You are not currently logged into a group.';
+}
 
 
 // Processing form data when form Create Group is submitted
@@ -51,6 +108,8 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
                     } else {
                         echo "Oops! Something went wrong. Please try again later.";
                     }
+                } else {
+                    echo 'Prepared statement failed.';
                 }
 
                 // Close statement
@@ -68,48 +127,57 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
                 $grouppassword = trim($_POST['group-password']);
 
             } // else (input group password not empty)
-
+            
             // Check input errors before inserting in database
             if(empty($groupname_err) && empty($grouppassword_err)) {
-
-                // Prepare an INSERT statement
-                $sql = "INSERT INTO groups (group_name, group_password) VALUES
-                (?, ?)";
-
-                if ($stmt = mysqli_prepare($link, $sql)) {
-                    //Bind variables to the prepared statement as parameters
-
-                    mysqli_stmt_bind_param($stmt, 'ss', $param_groupname, $param_grouppassword);
-
-
-                    // Set parameters
-                    $param_groupname = $groupname;
-                    $param_grouppassword = password_hash($grouppassword, PASSWORD_DEFAULT);
-                    // Creates password hash
-
-                    // Attempt to execute prepared statement
-                    if(mysqli_stmt_execute($stmt)) {
-                        $groupID = mysqli_insert_id($link);
-                        $_SESSION['group_name'] = $groupname;
-                        $_SESSION['group_id'] = $groupID;
-                        header("location: index.php");
-
-                    } else {
-                        echo "Oops! Something went wrong. Please try again later.";
-                    }
-                }
-
-                // Close statement
-                mysqli_stmt_close($stmt);
-
-                // Create variable from SESSION for logged in usersID
-                $userID = $_SESSION['user_id'];
                 
-
-                // Create query to insert user_id from users and group_id from groups into user2group
-                $sql = "INSERT INTO user2group (user_id, group_id) VALUES ('$userID', '$groupID')";
+                // check if username already exists, and if so, display error.
+                $sql = "SELECT group_name FROM groups WHERE group_name = '$groupname'";
                 $result = mysqli_query($link, $sql);
+                $row = $result->num_rows;
+                
+                
+                if ($row == 1) {
+                    $groupname_err = "This group<br> name is taken. Please choose another.";
+                } else {
+                    
+                    // Prepare an INSERT statement
+                    $sql = "INSERT INTO groups (group_name, group_password) VALUES
+                    (?, ?)";
 
+                    if ($stmt = mysqli_prepare($link, $sql)) {
+                        //Bind variables to the prepared statement as parameters
+
+                        mysqli_stmt_bind_param($stmt, 'ss', $param_groupname, $param_grouppassword);
+
+
+                        // Set parameters
+                        $param_groupname = $groupname;
+                        $param_grouppassword = password_hash($grouppassword, PASSWORD_DEFAULT);
+                        // Creates password hash
+
+                        // Attempt to execute prepared statement
+                        if(mysqli_stmt_execute($stmt)) {
+                            $groupID = mysqli_insert_id($link);
+                            $_SESSION['group_name'] = $groupname;
+                            $_SESSION['group_id'] = $groupID;
+                            header("location: index.php");
+                        } else {
+                            echo "Oops! Something went wrong. Please try again later.";
+                        }
+                    }
+
+                    // Close statement
+                    mysqli_stmt_close($stmt);
+
+                    // Create variable from SESSION for logged in usersID
+                    $userID = $_SESSION['user_id'];
+
+                    // Create query to insert user_id from users and group_id from groups into user2group
+                    $sql = "INSERT INTO user2group (user_id, group_id) VALUES ('$userID', '$groupID')";
+                    $result = mysqli_query($link, $sql);
+
+                }// check if group name already taken
             } // Check input errors if statement
 
             // Close connection
@@ -141,7 +209,6 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
             // if they don't belong, insert their user_id to their inputted group in user2group
 
             if (empty($groupnamejoin_err) && empty($grouppasswordjoin_err)) {
-                
                 
                 // Query groups TABLE to grab group_id from inputted group_name.
                 $sql = "SELECT group_name, group_password FROM groups WHERE group_name = ?";
@@ -244,6 +311,53 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
         case 'launch-group':
             // Validate and execute statements
             
+            if (empty(trim($_POST['group-name-launch']))) {
+                $groupnamelaunch_err = "Please enter a group name to launch.";
+            } else {
+                
+                $groupname = trim($_POST['group-name-launch']);
+                
+                //query DB to check if group_name is first: in the groups table (if no output error) and second: if the current user's ID and group ID cobination is in the user2group tabe (if not, output error that user has not joined).
+                
+                // check if group name exists
+                if (empty($groupnamelaunch_err)) {
+                    $sql = "SELECT group_name FROM groups WHERE group_name = '$groupname'";
+                    $result = mysqli_query($link, $sql);
+                    $row = $result->num_rows;
+
+                    if (!$row == 1) {
+                        $groupnamelaunch_err = "This group name does not exist.";
+                    } else {
+                        // check if group_id and user_id is in user2group (same row)
+                        
+                        $sql = "SELECT *
+                                FROM user2group
+                                JOIN users on users.user_id = user2group.user_id
+                                JOIN groups on groups.group_id = user2group.group_id 
+                                WHERE users.user_id = '$userID'
+                                AND groups.group_name = '$groupname'";
+                        
+                        //$sql = "SELECT group_name FROM groups WHERE group_name = '$groupname'";
+                        if($result = mysqli_query($link, $sql)){
+                            $row = $result->num_rows;
+
+                            if (!$row == 1) {
+                                $groupnamelaunch_err = 'You have not joined this group.';
+                            } else {
+                                $_SESSION['group_name'] = $groupname;
+                                
+                                header("location: index.php");
+                            }
+                        } else {
+                            echo 'somthing wrong happened.';
+                        }
+                    }
+                }
+                
+            }
+            
+            
+            
             break;
             
 // Processing form data when form Join Group is submitted
@@ -267,11 +381,9 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
 
 <body>
     <h1>Hi, <strong><?php echo $_SESSION['first_name']; ?></strong></h1>
-    
     <div>
         <a href="logout.php">Log Out</a>
     </div>
-
     <div class="group-wrapper">
         <div id="create-group-wrapper" class="form-wrapper">
             <form method="post" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>">
@@ -314,10 +426,21 @@ if ($_SERVER['REQUEST_METHOD'] == "POST"){
                 <input type="hidden" name="group-forms" value="launch-group">
                 <div class="form-group">
                     <label for="group-name">Group Name<sup>*</sup></label>
-                    <input type="text" class="form-control" name="group-name-launch" required>
+                    <input type="text" class="form-control" name="group-name-launch"><span class="help-block"><?php echo $groupnamelaunch_err; ?></span>
                 </div>
                 <div class="form-group">
                     <input type="submit" class="btn btn-primary" value="Launch Group">
+                </div>
+                <p>
+                    <?php echo $currentgroupnamemsg; ?>
+                </p>
+                <p>
+                    <?php echo $joinedgroupsmsg; foreach ($groupArray as $value) {
+                        echo $value . "<br>";
+                    } ?>
+                </p>
+                <div>
+
                 </div>
             </form>
         </div>
